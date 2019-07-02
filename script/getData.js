@@ -1,5 +1,6 @@
 const axios = require('axios');
 const parseString = require('xml2js').parseString;
+const simplify = require('./simplifyData.js');
 
 //TODO: don't forget french
 const getData = async (client, index, type) => {
@@ -45,6 +46,7 @@ const getData = async (client, index, type) => {
         jsonJobInfo = result.SolrResponse.Documents[0].Document[0];
       });
 
+      jsonJobInfo = simplify(jsonJobInfo);
 
       allRecords.push({ index: { _index: index, _type: type } });
       allRecords.push(jsonJobInfo);
