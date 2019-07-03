@@ -41,3 +41,4 @@ const simplifyObject = (obj) => {
 };
 
 module.exports = simplifyData;
+module.exports._simplifyArray = simplifyArray

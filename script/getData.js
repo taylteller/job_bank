@@ -1,20 +1,19 @@
 const axios = require('axios');
 const parseString = require('xml2js').parseString;
 const simplify = require('./simplifyData.js');
+const baseUrl = 'https://www.jobbank.gc.ca/xmlfeed/';
+const english = 'en/';
+const french = 'fr/';
+const mainEndpoint = 'on';
 
-//TODO: don't forget french
-const getData = async (client, index, type) => {
 
-  let allRecords = [];
+const getData = async (client, index, type, language) => {
+  //TODO: language handling
 
-  //TODO: make url an env variable... i think
-  const initialData = await axios.get('https://www.jobbank.gc.ca/xmlfeed/en/on', {
-    headers: {
-      Cookie: "[insert correct cookie]"
-    },
-    responseType: 'text'
-  });
-  //here 1/2... if this axios call fails, need to handle that
+  let allRecords = {};
+
+  const initialData = await endpointCall(baseUrl + english + mainEndpoint);
+  //TODO: conditional to check for successful endpoint hit, otherwise abort
 
   let jsonData = {};
 
@@ -24,35 +23,59 @@ const getData = async (client, index, type) => {
 
   //TODO: limiting n of records for now but will need to be unlimited
   let tempDataSet = jsonData.slice(0, 4);
-  // console.log(tempDataSet);
+
+  //TODO: conditional, if language english do this, if french do french, or if both do both
+  allRecords.english = await createDataSet(tempDataSet, english, index, type);
+
+  return allRecords;
+};
+
+const endpointCall = async (url, count=0) => {
+  let dataObj;
+
+  try {
+    dataObj = await axios.get(url, {
+      headers: {
+        Cookie: "[insert correct cookie]"
+      },
+      responseType: 'text'
+    });
+    return dataObj;
+  } catch(error) {
+    if (count < 5) {
+      count++;
+      console.log('inside catch',count);
+      return await endpointCall(url, count);
+    } 
+    
+    console.error('Unable to make initial endpoint call |', error);
+    throw error;
+  } 
+};
+
+const createDataSet = async (tempDataSet, language, index, type) => {
+
+  let finalDataSet = [];
 
   //TODO: use map
   for (var i = 0; i < tempDataSet.length; i++) {
     if (tempDataSet[i].hasOwnProperty('jobs_id')) {
-      // console.log(i,tempDataSet[i].jobs_id);
-      let jobUrl = 'https://www.jobbank.gc.ca/xmlfeed/en/' + tempDataSet[i].jobs_id[0] + '.xml';
+      let jobUrl = baseUrl + language + tempDataSet[i].jobs_id[0] + '.xml';
 
-      let indivRecord = await axios.get(jobUrl, {
-        headers: {
-          Cookie: "[insert correct cookie]"
-        },
-        responseType: 'text'
-      });
-      //here 2/2... if the axios call for whatever reason failed, need to handle that; otherwise you're going to push
-      //a useless object into the array that will get pushed wholesale to ES
+      let indivRecord = await endpointCall(jobUrl);
 
       let jsonJobInfo = {};
       parseString(indivRecord.data, (err, result) => {
         jsonJobInfo = result.SolrResponse.Documents[0].Document[0];
       });
 
-      jsonJobInfo = simplify(jsonJobInfo);
+      jsonJobInfo = await simplify(jsonJobInfo);
 
-      allRecords.push({ index: { _index: index, _type: type } });
-      allRecords.push(jsonJobInfo);
+      finalDataSet.push({ index: { _index: index, _type: type } });
+      finalDataSet.push(jsonJobInfo);
     }
   }
-  return allRecords;
+  return finalDataSet;
 };
 
 module.exports = getData;
