@@ -3,7 +3,7 @@ const expect = chai.expect;
 const sinon = require('sinon');
 
 // const index = require('../index.js');
-const resetIndex = require('../../script/resetIndex.js');
+const resetIndex = require('../../script/elasticsearch.js');
 
 describe.skip('Main call', () => {
   it('should call resetIndex', (done) => {
