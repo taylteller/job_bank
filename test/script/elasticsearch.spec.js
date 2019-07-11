@@ -3,7 +3,7 @@ const expect = chai.expect;
 const sinon = require('sinon');
 
 // const index = require('../index.js');
-const resetIndex = require('../../script/elasticsearch.js');
+// const resetIndex = require('../../script/elasticsearch.js');
 
 describe.skip('Main call', () => {
   it('should call resetIndex', (done) => {
@@ -14,7 +14,7 @@ describe.skip('Main call', () => {
   })
 });
 
-describe('ResetIndex', function () {
+describe.skip('ResetIndex', function () {
   // it('should return a statusCode', async function () {
   //   this.timeout(15000);
   //   const response = await resetIndex();

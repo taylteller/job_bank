@@ -36,7 +36,7 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
 
   // Bulk save
   let test = await elasticsearch.bulkSave(allRecords, englishIndex, frenchIndex);
-console.log('test2',test);
+// console.log('test2',test);
 
 }());
 

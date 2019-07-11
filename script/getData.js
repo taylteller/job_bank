@@ -63,7 +63,6 @@ const endpointCall = async (url, count=0) => {
 };
 
 const createDataSet = async (tempDataSet, lang, index, type) => {
-
   let finalDataSet = [];
 
   //TODO: use map
@@ -87,7 +86,7 @@ const createDataSet = async (tempDataSet, lang, index, type) => {
         finalDataSet.push(jsonJobInfo);
 
       } catch (err) {
-        console.error('Unable to hit endpoint for job ID ' + tempDataSet[i].jobs_id[0] + ' | ' + err);
+        console.error('Unable to create listing for job ID ' + tempDataSet[i].jobs_id[0] + ' | ' + err);
       }
 
     }
