@@ -32,11 +32,11 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
   }
 
   // Get data
-  let allRecords = await getData(englishIndex, frenchIndex);
+  let allRecords = await getData.getData(englishIndex, frenchIndex);
 
   // Bulk save
   let test = await elasticsearch.bulkSave(allRecords, englishIndex, frenchIndex);
-// console.log('test2',test);
+console.log('test2',test);
 
 }());
 

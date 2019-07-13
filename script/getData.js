@@ -8,40 +8,7 @@ const mainEndpoint = 'on';
 
 const type = 'job';
 
-const getData = async (englishIndex, frenchIndex) => {
-
-  let allRecords = {};
-  let initialData;
-
-  // Fetch job IDs from initial endpoint
-  try {
-    initialData = await endpointCall(baseUrl + english + mainEndpoint);
-  } catch (err) {
-    console.error(`Unable to reach main endpoint: ${err.message}`);
-    process.exit(1);
-  }
-
-  // Convert xml response to parsable json object
-  let jsonData = {};
-  parseString(initialData.data, (err, result) => {
-    jsonData = result.SolrResponse.Documents[0].Document;
-  });
-
-  //TODO: limiting n of records for now but will need to be unlimited
-  let tempDataSet = jsonData.slice(0, 4);
-
-  // Fetch individual jobs and build allRecords object
-  if (englishIndex) {
-    allRecords.english = await createDataSet(tempDataSet, english, englishIndex, type);
-  }
-  if (frenchIndex) {
-    allRecords.french = await createDataSet(tempDataSet, french, frenchIndex, type);
-  }
-
-  return allRecords;
-};
-
-const endpointCall = async (url, count=0) => {
+module.exports._endpointCall = async (url, count=0) => {
   let dataObj;
 
   try {
@@ -55,14 +22,18 @@ const endpointCall = async (url, count=0) => {
   } catch(error) {
     if (count < 5) {
       count++;
-      return await endpointCall(url, count);
+      return await module.exports._endpointCall(url, count);
     }
     // console.error('Unable to make initial endpoint call |', error);
     throw error;
   }
 };
 
-const createDataSet = async (tempDataSet, lang, index, type) => {
+module.exports.endpointCall = (url) => {
+  return this._endpointCall(url);
+};
+
+module.exports._createDataSet = async (tempDataSet, lang, index, type) => {
   let finalDataSet = [];
 
   //TODO: use map
@@ -74,7 +45,7 @@ const createDataSet = async (tempDataSet, lang, index, type) => {
       let jsonJobInfo = {};
 
       try {
-        indivRecord = await endpointCall(jobUrl);
+        indivRecord = await this.endpointCall(jobUrl);
 
         parseString(indivRecord.data, (err, result) => {
           jsonJobInfo = result.SolrResponse.Documents[0].Document[0];
@@ -94,6 +65,39 @@ const createDataSet = async (tempDataSet, lang, index, type) => {
   return finalDataSet;
 };
 
-module.exports = getData;
-module.exports._endpointCall = endpointCall;
-module.exports._createDataSet = createDataSet;
+module.exports.createDataSet = (tempDataSet, lang, index, type) => {
+  return this._createDataSet(tempDataSet, lang, index, type);
+};
+
+module.exports.getData = async (englishIndex, frenchIndex) => {
+
+  let allRecords = {};
+  let initialData;
+
+  // Fetch job IDs from initial endpoint
+  try {
+    initialData = await this.endpointCall(baseUrl + english + mainEndpoint);
+  } catch (err) {
+    console.error(`Unable to reach main endpoint: ${err.message}`);
+    process.exit(1);
+  }
+
+  // Convert xml response to parsable json object
+  let jsonData = {};
+  parseString(initialData.data, (err, result) => {
+    jsonData = result.SolrResponse.Documents[0].Document;
+  });
+
+  //TODO: limiting n of records for now but will need to be unlimited
+  let tempDataSet = jsonData.slice(0, 4);
+
+  // Fetch individual jobs and build allRecords object
+  if (englishIndex) {
+    allRecords.english = await this.createDataSet(tempDataSet, english, englishIndex, type);
+  }
+  if (frenchIndex) {
+    allRecords.french = await this.createDataSet(tempDataSet, french, frenchIndex, type);
+  }
+
+  return allRecords;
+};
