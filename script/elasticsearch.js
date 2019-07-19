@@ -5,11 +5,16 @@ const client = !!+process.env.ES_MOCK ? new mockES.Client() :
   new Client({ node: process.env.ES_PORT || 'http://localhost:9200' });
 
 module.exports.resetIndex = async (index) => {
-
-  const {body, statusCode, headers, warnings, meta} = await client.indices.exists({ index: index });
+let deconstructor = { body: undefined};
 
   try {
-    if (body) {
+    deconstructor = await client.indices.exists({index: index});
+  } catch (err) {
+    console.error(`Error checking whether index exists: ${err.message}`);
+  }
+
+  try {
+    if (deconstructor.body) {
       await client.indices.delete({index: index});
     }
     await client.indices.create({index: index});
@@ -20,6 +25,9 @@ module.exports.resetIndex = async (index) => {
 };
 
 module.exports.bulkSave = async (allRecords, englishIndex, frenchIndex) => {
+  //TODO: will need to make bulkSave take the index and be called twice in index
+  // rather than taking a boolean for each index
+
   try {
     let response = {};
     if (englishIndex) {

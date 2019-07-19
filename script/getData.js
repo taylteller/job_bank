@@ -53,6 +53,7 @@ module.exports._createDataSet = async (tempDataSet, lang, index, type) => {
 
         jsonJobInfo = await simplify(jsonJobInfo);
 
+        //TODO: type seems to be deprecated in 7
         finalDataSet.push({ index: { _index: index, _type: type } });
         finalDataSet.push(jsonJobInfo);
 
