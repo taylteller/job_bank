@@ -1,3 +1,4 @@
+require('dotenv').config();
 const elasticsearch = require('./script/elasticsearch');
 const getData = require('./script/getData.js');
 const argv = require('yargs')

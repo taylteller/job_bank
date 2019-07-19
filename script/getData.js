@@ -57,6 +57,7 @@ module.exports._createDataSet = async (tempDataSet, lang, index, type) => {
         finalDataSet.push(jsonJobInfo);
 
       } catch (err) {
+        //TODO: what happens when getting a job fails after 5 tries is a business decision; ask Megan
         console.error('Unable to create listing for job ID ' + tempDataSet[i].jobs_id[0] + ' | ' + err);
       }
 
@@ -79,6 +80,8 @@ module.exports.getData = async (englishIndex, frenchIndex) => {
     initialData = await this.endpointCall(baseUrl + english + mainEndpoint);
   } catch (err) {
     console.error(`Unable to reach main endpoint: ${err.message}`);
+    //Instead of having a process.exit(1);, you should instead throw err and
+    // add a try/catch to the index.js that calls process.exit(1) on error.
     process.exit(1);
   }
 

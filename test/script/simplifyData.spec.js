@@ -43,29 +43,9 @@ describe('simplifyData.js', () => {
               app_online: [ '' ],
               app_email: [ 'mdoffice23b@gmail.com' ],
               app_phone: [ {
-                app_phone_number: [ '' ],
-                app_phone_ext: [ '' ],
-                app_phone_start_bus_hours: [ '' ],
-                app_phone_end_bus_hours: [ '' ]
-              } ],
-              app_fax: [ '' ],
-              app_person: [ {
-                app_person_street: [ '' ],
-                app_person_room: [ '' ],
-                app_person_city: [ '' ],
-                app_person_province: [ '' ],
-                app_person_country: [ '' ],
-                app_person_pstlcd: [ '' ],
-                app_person_start_bus_hours: [ '' ],
-                app_person_end_bus_hours: [ '' ]
-              } ],
-              app_mail: [ {
-                app_mail_street: [ '' ],
-                app_mail_room: [ '' ],
-                app_mail_city: [ '' ],
-                app_mail_province: [ '' ],
-                app_mail_country: [ '' ],
-                app_mail_pstlcd: [ '' ]
+                app_phone_number: 'whoa a string' ,
+                app_phone_ext: [ 'whoa, an array item' ],
+                app_phone_start_bus_hours: [ '0', '1', '2' ]
               } ]
             }
           ]
@@ -74,29 +54,9 @@ describe('simplifyData.js', () => {
           app_online: '',
           app_email: 'mdoffice23b@gmail.com',
           app_phone: {
-            app_phone_number: '',
-            app_phone_ext: '',
-            app_phone_start_bus_hours: '',
-            app_phone_end_bus_hours: ''
-          },
-          app_fax: '',
-          app_person: {
-            app_person_street: '',
-            app_person_room: '',
-            app_person_city: '',
-            app_person_province: '',
-            app_person_country: '',
-            app_person_pstlcd: '',
-            app_person_start_bus_hours: '',
-            app_person_end_bus_hours: ''
-          },
-          app_mail: {
-            app_mail_street: '',
-            app_mail_room: '',
-            app_mail_city: '',
-            app_mail_province: '',
-            app_mail_country: '',
-            app_mail_pstlcd: ''
+            app_phone_number: 'whoa a string',
+            app_phone_ext: 'whoa, an array item',
+            app_phone_start_bus_hours: [ '0', '1', '2' ]
           }
         });
       });
