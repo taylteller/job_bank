@@ -1,6 +1,7 @@
 require('dotenv').config();
 const elasticsearch = require('./script/elasticsearch');
-const getData = require('./script/getData.js');
+const jobBank = require('./script/jobBank.js');
+
 const argv = require('yargs')
   .help()
   .alias({'english': ['e', 'English'], 'french': ['f', 'French'], 'help': ['h']})
@@ -8,6 +9,7 @@ const argv = require('yargs')
   .describe('french', 'reset French index')
   .argv;
 
+const parseString = require('xml2js').parseString;
 
 let indices = {};
 let baseIndex = 'job-bank-';
@@ -33,10 +35,37 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
   }
 
   // Get data
-  let allRecords = await getData.getData(englishIndex, frenchIndex);
+  // let allRecords = await getData.getData(englishIndex, frenchIndex);
 
+  const baseUrl = 'https://www.jobbank.gc.ca/xmlfeed/';
+  const english = 'en/';
+  const french = 'fr/';
+  const mainEndpoint = 'on';
+
+  let initialDatasetJSON = await jobBank.getInitialIDs();
+  let fullDatasetJSON;
+
+  //TODO: temporary limit on n of records; will need to be unlimited
+  initialDatasetJSON = initialDatasetJSON.slice(0,4);
+  // console.log(initialDatasetJSON);
+
+  fullDatasetJSON = await jobBank.createJobsArray(initialDatasetJSON, 'en');
+//TODO: needs to be called separately with fr
+
+
+
+
+
+
+
+  // console.log('fullData', fullDatasetJSON);
+
+
+  let bulkPushArray = jobBank.createBulkPushArray(fullDatasetJSON, englishIndex);
+  // console.log('bulkPushArray',bulkPushArray);
   // Bulk save
-  let test = await elasticsearch.bulkSave(allRecords, englishIndex, frenchIndex);
+  //TODO: will need to be called twice, once w a french set and once w an english set
+  let test = await elasticsearch.bulkSave(bulkPushArray, englishIndex);
 console.log('test2',test);
 
 }());

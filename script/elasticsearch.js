@@ -24,19 +24,9 @@ let deconstructor = { body: undefined};
   }
 };
 
-module.exports.bulkSave = async (allRecords, englishIndex, frenchIndex) => {
-  //TODO: will need to make bulkSave take the index and be called twice in index
-  // rather than taking a boolean for each index
-
+module.exports.bulkSave = async (allRecords) => {
   try {
-    let response = {};
-    if (englishIndex) {
-      response.en = await client.bulk({body: allRecords.english});
-    }
-    if (frenchIndex) {
-      response.fr = await client.bulk({body: allRecords.french});
-    }
-    return response;
+    return await client.bulk({body: allRecords});
   } catch (err) {
     console.log(`Error saving in bulk: ${err.message}`);
     return false;
