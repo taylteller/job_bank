@@ -21,7 +21,7 @@ describe('resetIndex', () => {
     it('should create it', () => {
       return elasticsearch.resetIndex(index).then( () => {
         return client.indices.exists({index:index}).then(response => {
-          return expect(response.body).to.be.true;
+          return   expect(response.body).to.be.true;
         });
       });
     });
@@ -44,19 +44,17 @@ describe('resetIndex', () => {
   });
 });
 
-describe.skip('bulkSave', () => {
-
-  //TODO: will need to complete this test after refactoring bulkSave
+describe('bulkSave', () => {
 
   describe('when it receives an object with an array of correctly alternating objects', () => {
     it('should push the data to the supplied index', () => {
-      return elasticsearch.bulkSave({ english:
+      return elasticsearch.bulkSave(
         [
           { index: { _index: 'any' }},
           {stuff: 'things'},
           { index: { _index: 'any' }},
           {stuff: 'things'}
-        ]}, true, false).then(resp => expect(resp).to.deep.equal(
+        ]).then(resp => expect(resp).to.deep.equal(
           {
             body: {
               took: 88,
@@ -64,15 +62,40 @@ describe.skip('bulkSave', () => {
               items: [ [Object], [Object], [Object], [Object] ]
             },
             statusCode: 200
-          })
+          }
+        )
       );
     })
   });
 
+  describe('when it receives something other than an array for the body field of the object', () => {
+    it('should return false', () => {
+      return elasticsearch.bulkSave({ index: { _index: 'any' }}).then(resp => expect(resp).to.equal(false)
+      );
+    });
+  });
 
-  //if call bulksave with incorrect allrecords, should throw an error
-  // --> lots of test cases...
-  // otherwise, should return a success object
+  describe('when it receives an array with odd number of objects', () => {
+    it('should return false', () => {
+      return elasticsearch.bulkSave(
+        [
+          { index: { _index: 'any' }},
+          {stuff: 'things'},
+          { index: { _index: 'any' }}
+        ]).then(resp => expect(resp).to.equal(false));
+    });
+  });
 
+  describe('when odd numbered array items don\'t look like {index: {_index:\'test\'}, ...}', () => {
+    it('should return false', () => {
+      return elasticsearch.bulkSave(
+        [
+          { index: { _index: 'any' }},
+          { index: { _index: 'any' }},
+          {stuff: 'things'},
+          {stuff: 'things'},
+        ]).then(resp => expect(resp).to.equal(false));
+    });
+  });
 
 });

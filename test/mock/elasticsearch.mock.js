@@ -2,12 +2,16 @@ let indexExists = false;
 
 //TODO: create a function to run the initial argument verification in all functions
 
-const create = async (index) => {
+const _isValidIndexObject = (index) => {
   // If no index argument is provided
   // OR if the provided argument isn't an object (cannot be an array)
   // OR if the object doesn't have an 'index' key
   // OR if the key has no value...
-  if (!index || !(typeof index === 'object' && !(index instanceof Array)) || !index.hasOwnProperty('index') || index.index === undefined) {
+  return !!index || (typeof index === 'object' && (index instanceof Array)) || index.hasOwnProperty('index') || !index.index === undefined;
+}
+
+const create = async (index) => {
+  if (!_isValidIndexObject(index)) {
     throw new Error('ConfigurationError: Missing required parameter: index');
   }
   //If index already exist
@@ -30,11 +34,7 @@ const create = async (index) => {
 };
 
 const del = async (index) => {
-  // If no index argument is provided
-  // OR if the provided argument isn't an object (cannot be an array)
-  // OR if the object doesn't have an 'index' key
-  // OR if the key has no value...
-  if (!index || !(typeof index === 'object' && !(index instanceof Array)) || !index.hasOwnProperty('index') || index.index === undefined) {
+  if (!_isValidIndexObject(index)) {
     throw new Error('ConfigurationError: Missing required parameter: index');
   }
   // If the index doesn't exist
@@ -53,11 +53,7 @@ const del = async (index) => {
 };
 
 const exists = async (index) => {
-  // If no index argument is provided
-  // OR if the provided argument isn't an object (cannot be an array)
-  // OR if the object doesn't have an 'index' key
-  // OR if the key has no value...
-  if (!index || !(typeof index === 'object' && !(index instanceof Array)) || !index.hasOwnProperty('index') || index.index === undefined) {
+  if (!_isValidIndexObject(index)) {
     throw new Error('ConfigurationError: Missing required parameter: index');
   }
   // If index does not exist...
@@ -88,14 +84,13 @@ const bulk = async (body) => {
     throw new Error('ConfigurationError: Missing required parameter: body');
   }
 
-  // The value of the body.body key needs to be an array
-  // AND it needs to contain an odd number of items
-  // AND all even numbered array items must look like {index: {_index:'test'}, ...}
+  // If the value of the body.body is not an array
+  // OR if it contains an odd number of items
+  // OR not all even numbered array items look like {index: {_index:'test'}, ...}
   if (!(body.hasOwnProperty('body') && Array.isArray(body.body))
-    // || body.body.length % 2 !== 0
-    // || body.body.filter(_filterBadBulkItems)
+    || body.body.length % 2 !== 0
+    || body.body.filter(_filterBadBulkItems).length > 0
   ) {
-    console.log('causght me')
     throw new Error('Error saving in bulk: illegal_argument_exception');
   }
 

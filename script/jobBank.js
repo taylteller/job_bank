@@ -19,7 +19,7 @@ const jobBank = {
     }).catch(err => {
       if (count < 5) {
         count++;
-        return _endpointCall(url, count);
+        return this._endpointCall(url, count);
       }
       throw err;
     });
