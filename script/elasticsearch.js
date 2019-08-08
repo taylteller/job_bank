@@ -32,3 +32,49 @@ module.exports.bulkSave = async (allRecords) => {
     return false;
   }
 };
+
+module.exports.refresh = async (index) => {
+  try {
+    return await client.indices.refresh({ index });
+  } catch (err) {
+    console.log(`Error refreshing index: ${JSON.stringify(err, null, 2)}`)
+  }
+};
+
+module.exports.searchQuery = async (keyword, index, size, from, sort) => {
+  let searchQuery;
+  if (keyword) {
+    searchQuery = {
+      multi_match: {
+        query: keyword,
+        fields: [
+          "title",
+          "city_name",
+          "province_cd"
+        ]
+      },
+    }
+  } else {
+    searchQuery = {
+      match_all: {},
+    }
+  }
+
+  try {
+    return await client.search({
+      index: index,
+      body: {
+          query: searchQuery,
+          size: size,
+          from: from,
+          sort: [
+            {"date_posted": {order: sort}}
+          ]
+        }
+    })
+  } catch (err) {
+    // console.log(`Error performing search: ${err}`);
+    console.log(`Error performing search: ${JSON.stringify(err, null, 2)}`);
+    return false;
+  }
+};
