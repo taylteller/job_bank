@@ -21,7 +21,7 @@ describe('resetIndex', () => {
     it('should create it', () => {
       return elasticsearch.resetIndex(index).then( () => {
         return client.indices.exists({index:index}).then(response => {
-          return   expect(response.body).to.be.true;
+          return expect(response.body).to.be.true;
         });
       });
     });
@@ -98,4 +98,32 @@ describe('bulkSave', () => {
     });
   });
 
+});
+
+describe('refresh', () => {
+  describe('when performing a refresh on indices', () => {
+    it('should return a response object', () => {
+      return elasticsearch.refresh().then( resp => {
+        return expect(resp).to.deep.equal({
+          body: { _shards: { total: 2, successful: 2, failed: 0 } },
+          statusCode: 200
+        });
+      })
+    });
+  });
+});
+
+describe('searchQuery', () => {
+
+  before( async () => {
+    return await elasticsearch.resetIndex('job-bank-en');
+  });
+
+  describe('when a query is performed ', () => {
+    it('should return an array of matches', () => {
+      return elasticsearch.searchQuery('roofer', 'job-bank-en', 20, 0, 'desc').then( resp => {
+        return expect(Array.isArray(resp.body.hits.hits)).to.be.true;
+      });
+    });
+  });
 });

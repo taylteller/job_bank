@@ -1,7 +1,5 @@
 let indexExists = false;
 
-//TODO: create a function to run the initial argument verification in all functions
-
 const _isValidIndexObject = (index) => {
   // If no index argument is provided
   // OR if the provided argument isn't an object (cannot be an array)
@@ -14,7 +12,7 @@ const create = async (index) => {
   if (!_isValidIndexObject(index)) {
     throw new Error('ConfigurationError: Missing required parameter: index');
   }
-  //If index already exist
+
   if (indexExists) {
     throw new Error('ResponseError: resource_already_exists_exception');
   }
@@ -37,7 +35,7 @@ const del = async (index) => {
   if (!_isValidIndexObject(index)) {
     throw new Error('ConfigurationError: Missing required parameter: index');
   }
-  // If the index doesn't exist
+
   if (!indexExists) {
     throw new Error('ResponseError: index_not_found_exception');
   }
@@ -56,7 +54,7 @@ const exists = async (index) => {
   if (!_isValidIndexObject(index)) {
     throw new Error('ConfigurationError: Missing required parameter: index');
   }
-  // If index does not exist...
+
   if (!indexExists) {
     return {
       body: false,
@@ -64,7 +62,6 @@ const exists = async (index) => {
     };
   }
 
-  // If it does exist...
   return {
     body: true,
     statusCode: 200
@@ -105,17 +102,56 @@ const bulk = async (body) => {
   };
 };
 
+const refresh = async () => {
+
+  return {
+    body: { _shards: { total: 2, successful: 2, failed: 0 } },
+    statusCode: 200
+  }
+};
+
+const search = async (keyword, index) => {
+
+  if (!indexExists) {
+    throw new Error('ResponseError: index_not_found_exception');
+  }
+
+  return {
+    body: {
+      took: 3,
+      timed_out: false,
+      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      hits: {
+        total: { value: 1, relation: 'eq' },
+        max_score: 0.90204775,
+        hits:  [
+          {
+            _index: 'job-bank-en',
+            _source: {
+              jobs_id: '30999896',
+              title: 'education outreach program co-ordinator'
+            }
+          }
+        ]
+      }
+    },
+    statusCode: 200
+  };
+};
+
 function EsMock() {
   console.log('Mock Elasticsearch Client in use');
-};
+}
 
 EsMock.prototype = {
   indices: {
     create: create,
     delete: del,
-    exists: exists
+    exists: exists,
+    refresh: refresh
   },
-  bulk: bulk
+  bulk: bulk,
+  search: search
 };
 
 module.exports.Client = EsMock;
