@@ -5,11 +5,11 @@ const jobBank = require('./script/jobBank.js');
 const argv = require('yargs')
   .help()
   .alias({'english': ['e', 'English'], 'french': ['f', 'French'], 'help': ['h']})
-  .describe('english', 'reset English index')
-  .describe('french', 'reset French index')
+  .describe('english', 'perform selected operation on English index')
+  .describe('french', 'perform selected operation on French index')
+  .describe('reset', 'reset index of selected language(s)')
+  .describe('update', 'update index of selected language(s)')
   .argv;
-
-const parseString = require('xml2js').parseString;
 
 let indices = {};
 let baseIndex = 'job-bank-';
@@ -23,24 +23,22 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
 }
 
 (async function () {
-  // Reset indices
-  indices.en = englishIndex ? elasticsearch.resetIndex(englishIndex) : true;
-  indices.fr = frenchIndex ? elasticsearch.resetIndex(frenchIndex) : true;
 
-  await indices.en;
-  await indices.fr;
-
-  if (indices.en === false || indices.fr === false) {
-    process.exit(1)
-  }
-
-   // Get data
-  // let allRecords = await getData.getData(englishIndex, frenchIndex);
-
+  /*****************************************************/
+  /*                 HOUSEKEEPING                      */
+  /*****************************************************/
+  //TODO: use or erase
   const baseUrl = 'https://www.jobbank.gc.ca/xmlfeed/';
   const english = 'en/';
   const french = 'fr/';
   const mainEndpoint = 'on';
+
+  let jobsToFetch = [];
+  let esRecordsToDelete = [];
+
+  /*****************************************************/
+  /*              QUERY MAIN ENDPOINT                  */
+  /*****************************************************/
 
   let initialDatasetJSON = await jobBank.getInitialIDs().catch(error => {
     console.log('Cannot process data from main endpoint: ',error.message);
@@ -51,93 +49,108 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
   //TODO: temporary limit on n of records; will need to be unlimited
   initialDatasetJSON = initialDatasetJSON.slice(0,3);
   console.log('initialDatasetJSON',initialDatasetJSON);
-  fullDatasetJSON = await jobBank.createJobsArray(initialDatasetJSON, 'en').catch(error => {console.log('Cannot reach job endpoint: ',error.message)});
-//TODO: needs to be called separately with fr
-  //TODO: do something with fullDataJSON.errors - log to console for now
 
+  /*****************************************************/
+  /*                   IF RESET                        */
+  /*****************************************************/
 
-  let bulkPushArray = jobBank.createBulkPushArray(englishIndex, fullDatasetJSON.jobs, []);
-  // console.log('bulkPushArray',bulkPushArray);
-  // Bulk save
-  //TODO: will need to be called twice, once w a french set and once w an english set
-  //TODO: will also need error handling
+  // If reset is selected, only perform reset, even if update is also selected
+  if (argv.hasOwnProperty('reset')) {
+console.log('performing reset');
 
+    // Reset indices
+    indices.en = englishIndex ? elasticsearch.resetIndex(englishIndex) : true;
+    indices.fr = frenchIndex ? elasticsearch.resetIndex(frenchIndex) : true;
 
+    await indices.en;
+    await indices.fr;
 
-  let test = await elasticsearch.bulkSave(bulkPushArray);
-// console.log('test2',test);
+    if (indices.en === false || indices.fr === false) {
+      process.exit(1)
+    }
 
-  let refresher = await elasticsearch.refresh(englishIndex);
-  // console.log('refresher',refresher)
-
-  let hits;
-
-  try {
-    let searchQuery = await elasticsearch.searchQuery(englishIndex);
-    hits = searchQuery.body.hits.hits;
-    // console.log('search',searchQuery);
-    console.log('body',searchQuery.body.hits.hits);
-  } catch (err) {
-    console.log('fail!', err.message);
+    jobsToFetch = initialDatasetJSON;
   }
 
-  let esRecordsToDelete = [];
-  let jobsToFetch = [];
+  /*****************************************************/
+  /*                   IF UPDATE                       */
+  /*****************************************************/
 
-  initialDatasetJSON.filter(function(job_record) {
+  // If update is selected and reset is not, or if no option is provided, perform an update
+  if (!argv.hasOwnProperty('reset')) {
+console.log('performing update');
+    let esHits;
 
-    let arrayEmptyWhenRecordNotAlreadyInES = hits.filter(function(es_record) {
-      //if records match, ONLY push the job record to the fetch array if its date is more recent
-      if (es_record._source.jobs_id === job_record.jobs_id[0]) {
-        let esDate = new Date(es_record._source.file_update_date);
-        let jobDate = new Date(job_record.file_update_date[0]);
-        if (jobDate.getTime() > esDate.getTime()) {
-          jobsToFetch.push(job_record);
-          esRecordsToDelete.push(job_record);
+    try {
+      let searchQuery = await elasticsearch.searchQuery(englishIndex);
+      esHits = searchQuery.body.hits.hits;
+      console.log('body', searchQuery.body.hits.hits);
+    } catch (err) {
+      console.log('fail!', err.message);
+    }
+
+    initialDatasetJSON.filter(function (job_record) {
+
+      let arrayEmptyWhenRecordNotAlreadyInES = esHits.filter(function (es_record) {
+        // If records match, ONLY push the job record to the fetch array if its date is more recent
+        if (es_record._source.jobs_id === job_record.jobs_id[0]) {
+          let esDate = new Date(es_record._source.file_update_date);
+          let jobDate = new Date(job_record.file_update_date[0]);
+          if (jobDate.getTime() > esDate.getTime()) {
+            jobsToFetch.push(job_record);
+            esRecordsToDelete.push(job_record);
+          }
+          return true;
         }
-        return true;
+      });
+
+      // If there was no match, add the job record to the fetch array
+      if (arrayEmptyWhenRecordNotAlreadyInES.length < 1) {
+        jobsToFetch.push(job_record);
       }
     });
 
-    //if there was no match at all, add the job record to the fetch array
-    if (arrayEmptyWhenRecordNotAlreadyInES.length < 1) {
-      jobsToFetch.push(job_record);
-    }
-  });
+    // Check es records against job records to identify old ones that need to be deleted
+    esHits.filter(function (es_record) {
+      let arrayEmptyWhenRecordNoLongerInJobList = initialDatasetJSON.filter(function (job_record) {
+        //if records match, ONLY push the job record to the fetch array if its date is more recent
+        if (es_record._source.jobs_id === job_record.jobs_id[0]) {
+          return true;
+        }
+      });
 
-  //now check es records against job records to identify old ones that need to be deleted
-  hits.filter(function(es_record) {
-    let arrayEmptyWhenRecordNoLongerInJobList = initialDatasetJSON.filter(function(job_record) {
-      //if records match, ONLY push the job record to the fetch array if its date is more recent
-      if (es_record._source.jobs_id === job_record.jobs_id[0]) {
-        return true;
+      // If there was no match (record is out of date), add the job record to the delete array
+      if (arrayEmptyWhenRecordNoLongerInJobList.length < 1) {
+        esRecordsToDelete.push(es_record);
       }
     });
 
-    //if there was no match at all, add the job record to the fetch array
-    if (arrayEmptyWhenRecordNoLongerInJobList.length < 1) {
-      esRecordsToDelete.push(es_record);
-    }
-  });
+    console.log('esRecordsToDelete', esRecordsToDelete);
+    console.log('jobstofetch', jobsToFetch);
+  }
 
-console.log('esRecordsToDelete',esRecordsToDelete);
-console.log('jobstofetch',jobsToFetch);
-
-
+  /*****************************************************/
+  /*     CREATE DATASET AND PUSH TO ELASTICSEARCH       */
+  /*****************************************************/
 
   jobsToFetch = await jobBank.createJobsArray(jobsToFetch, 'en').catch(error => {console.log('Cannot reach job endpoint: ',error.message)});
 console.log('jobstoFetch',jobsToFetch)
+  //TODO: needs to be called separately with fr
+  //TODO: do something with jobsToFetch.errors - log to console for now
 
-bulkPushArray = jobBank.createBulkPushArray(englishIndex, jobsToFetch.jobs, esRecordsToDelete);
+  bulkPushArray = jobBank.createBulkPushArray(englishIndex, jobsToFetch.jobs, esRecordsToDelete);
+  //TODO: will need to be called twice, once w a french set and once w an english set
+  //TODO: will also need error handling
 
 console.log('bulkPushArray',bulkPushArray);
 
-  test = await elasticsearch.bulkSave(bulkPushArray);
-console.log('test2',test);
+  if (bulkPushArray.length > 0) {
+    test = await elasticsearch.bulkSave(bulkPushArray);
+    console.log('test2', test);
 
-  refresher = await elasticsearch.refresh(englishIndex);
-  console.log('refresher',refresher)
-
+    refresher = await elasticsearch.refresh(englishIndex);
+    console.log('refresher',refresher)
+  }
 
 }());
 
