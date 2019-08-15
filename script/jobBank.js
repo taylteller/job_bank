@@ -79,12 +79,19 @@ const jobBank = {
     }
   },
 
-  createBulkPushArray: (arrayOfJobs, index) => {
-    return arrayOfJobs.reduce((accumulator, currentValue) => {
+  createBulkPushArray: (index, arrayOfJobs, arrayOfDeletes) => {
+    let jobsToAdd = arrayOfJobs.reduce((accumulator, currentValue) => {
       accumulator.push({index: { _index: index}});
       accumulator.push(currentValue);
       return accumulator;
     }, []);
+
+    let jobsToDelete = arrayOfDeletes.reduce((accumulator, currentValue) => {
+      accumulator.push({delete: {_index: index, _id: currentValue._id}});
+      return accumulator;
+    }, []);
+
+    return jobsToAdd.concat(jobsToDelete);
   }
 
 };

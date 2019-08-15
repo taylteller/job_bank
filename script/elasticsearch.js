@@ -41,3 +41,21 @@ module.exports.refresh = async (index) => {
   }
 };
 
+module.exports.searchQuery = async (index) => {
+
+  try {
+    return await client.search({
+      _source: ["jobs_id", "file_update_date"],
+      index: index,
+      body: {
+        query: {
+          match_all: {},
+        },
+      }
+    })
+  } catch (err) {
+    // console.log(`Error performing search: ${err}`);
+    console.log(`Error performing search: ${JSON.stringify(err, null, 2)}`);
+    return false;
+  }
+};

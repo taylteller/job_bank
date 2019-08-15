@@ -34,7 +34,7 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
     process.exit(1)
   }
 
-  // Get data
+   // Get data
   // let allRecords = await getData.getData(englishIndex, frenchIndex);
 
   const baseUrl = 'https://www.jobbank.gc.ca/xmlfeed/';
@@ -42,31 +42,116 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
   const french = 'fr/';
   const mainEndpoint = 'on';
 
-  let initialDatasetJSON = await jobBank.getInitialIDs();
+  let initialDatasetJSON = await jobBank.getInitialIDs().catch(error => {
+    console.log('Cannot process data from main endpoint: ',error.message);
+    process.exit(1);
+  });
   let fullDatasetJSON;
 
   //TODO: temporary limit on n of records; will need to be unlimited
-  initialDatasetJSON = initialDatasetJSON.slice(0,4);
-  // console.log(initialDatasetJSON);
-
-  fullDatasetJSON = await jobBank.createJobsArray(initialDatasetJSON, 'en');
+  initialDatasetJSON = initialDatasetJSON.slice(0,3);
+  console.log('initialDatasetJSON',initialDatasetJSON);
+  fullDatasetJSON = await jobBank.createJobsArray(initialDatasetJSON, 'en').catch(error => {console.log('Cannot reach job endpoint: ',error.message)});
 //TODO: needs to be called separately with fr
+  //TODO: do something with fullDataJSON.errors - log to console for now
 
 
-
-
-
-
-
-  // console.log('fullData', fullDatasetJSON);
-
-
-  let bulkPushArray = jobBank.createBulkPushArray(fullDatasetJSON, englishIndex);
+  let bulkPushArray = jobBank.createBulkPushArray(englishIndex, fullDatasetJSON.jobs, []);
   // console.log('bulkPushArray',bulkPushArray);
   // Bulk save
   //TODO: will need to be called twice, once w a french set and once w an english set
-  let test = await elasticsearch.bulkSave(bulkPushArray, englishIndex);
+  //TODO: will also need error handling
+
+
+
+  let test = await elasticsearch.bulkSave(bulkPushArray);
+// console.log('test2',test);
+
+  let refresher = await elasticsearch.refresh(englishIndex);
+  // console.log('refresher',refresher)
+
+  let hits;
+
+  try {
+    let searchQuery = await elasticsearch.searchQuery(englishIndex);
+    hits = searchQuery.body.hits.hits;
+    // console.log('search',searchQuery);
+    console.log('body',searchQuery.body.hits.hits);
+  } catch (err) {
+    console.log('fail!', err.message);
+  }
+
+  let esRecordsToDelete = [];
+  let jobsToFetch = [];
+
+  initialDatasetJSON.filter(function(job_record) {
+
+    let arrayEmptyWhenRecordNotAlreadyInES = hits.filter(function(es_record) {
+      //if records match, ONLY push the job record to the fetch array if its date is more recent
+      if (es_record._source.jobs_id === job_record.jobs_id[0]) {
+        let esDate = new Date(es_record._source.file_update_date);
+        let jobDate = new Date(job_record.file_update_date[0]);
+        if (jobDate.getTime() > esDate.getTime()) {
+          jobsToFetch.push(job_record);
+          esRecordsToDelete.push(job_record);
+        }
+        return true;
+      }
+    });
+
+    //if there was no match at all, add the job record to the fetch array
+    if (arrayEmptyWhenRecordNotAlreadyInES.length < 1) {
+      jobsToFetch.push(job_record);
+    }
+  });
+
+  //now check es records against job records to identify old ones that need to be deleted
+  hits.filter(function(es_record) {
+    let arrayEmptyWhenRecordNoLongerInJobList = initialDatasetJSON.filter(function(job_record) {
+      //if records match, ONLY push the job record to the fetch array if its date is more recent
+      if (es_record._source.jobs_id === job_record.jobs_id[0]) {
+        return true;
+      }
+    });
+
+    //if there was no match at all, add the job record to the fetch array
+    if (arrayEmptyWhenRecordNoLongerInJobList.length < 1) {
+      esRecordsToDelete.push(es_record);
+    }
+  });
+
+console.log('esRecordsToDelete',esRecordsToDelete);
+console.log('jobstofetch',jobsToFetch);
+
+jobsToFetch.push({
+    jobs_id: [ '31039072' ],
+    file_update_date: [ '2019-08-15T09:57:00Z' ]
+  }
+);
+
+esRecordsToDelete.push({
+  _index: 'job-bank-en',
+  _type: '_doc',
+  _id: 'OnjGlWwB7UReD2qR9nHY',
+  _score: 1,
+  _source: { file_update_date: '2019-08-15T09:58:00Z', jobs_id: '31039050' }
+})
+
+
+
+  jobsToFetch = await jobBank.createJobsArray(jobsToFetch, 'en').catch(error => {console.log('Cannot reach job endpoint: ',error.message)});
+console.log('jobstoFetch',jobsToFetch)
+
+bulkPushArray = jobBank.createBulkPushArray(englishIndex, jobsToFetch.jobs, esRecordsToDelete);
+
+console.log('bulkPushArray',bulkPushArray);
+
+  test = await elasticsearch.bulkSave(bulkPushArray);
 console.log('test2',test);
+
+  refresher = await elasticsearch.refresh(englishIndex);
+  console.log('refresher',refresher)
+
 
 }());
 
