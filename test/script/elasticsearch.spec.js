@@ -113,3 +113,17 @@ describe('refresh', () => {
   });
 });
 
+describe('searchQuery', () => {
+
+  before( async () => {
+    return await elasticsearch.resetIndex('job-bank-en');
+  });
+
+  describe('when a query is performed ', () => {
+    it('should return an array of matches', () => {
+      return elasticsearch.searchQuery('roofer', 'job-bank-en', 20, 0, 'desc').then( resp => {
+        return expect(Array.isArray(resp.body.hits.hits)).to.be.true;
+      });
+    });
+  });
+});

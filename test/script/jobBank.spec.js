@@ -300,9 +300,19 @@ describe('createJobsArray', () => {
       }
     ];
 
+    let arrayofDeletes = [
+      {
+        _index: 'job-bank-en',
+        _type: '_doc',
+        _id: 'RHjKlWwB7UReD2qRuXHQ',
+        _score: 1,
+        _source: { file_update_date: '2019-08-15T10:00:00Z', jobs_id: '31039047' }
+      }
+    ]
+
     describe('when it receives an array of jobs', () => {
       it('should return an array of objects alternating between an es header object and a job object', () => {
-        const func = () => jobBank.createBulkPushArray(arrayOfJobs, 'job-bank-en');
+        const func = () => jobBank.createBulkPushArray('job-bank-en', arrayOfJobs, []);
         return expect(func()).to.deep.equal([
           { index: { _index: 'job-bank-en' } },
           {
@@ -331,6 +341,36 @@ describe('createJobsArray', () => {
         ])
       });
     });
-  });
 
+    describe('when it receives an array of jobs and an array of jobs to delete', () => {
+      const func = () => jobBank.createBulkPushArray('job-bank-en', arrayOfJobs, arrayofDeletes);
+      return expect(func()).to.deep.equal([
+        { index: { _index: 'job-bank-en' } },
+        {
+          jobs_id: '30955317',
+          noc_2011: '8432',
+          skill_level: 'C',
+          remote_cd: '1273956',
+          title: 'greenhouse worker',
+          noc: '8432',
+          province_cd: 'ON',
+          salary: '$14.00 hourly',
+          employer_name: 'Pomas Farms Inc.'
+        },
+        { index: { _index: 'job-bank-en' } },
+        {
+          jobs_id: '30955317',
+          noc_2011: '8432',
+          skill_level: 'C',
+          remote_cd: '1273956',
+          title: 'greenhouse worker',
+          noc: '8432',
+          province_cd: 'ON',
+          salary: '$14.00 hourly',
+          employer_name: 'Pomas Farms Inc.'
+        },
+        { delete: { _index: 'job-bank-en', _id: 'RHjKlWwB7UReD2qRuXHQ' }}
+      ])
+    });
+  });
 });

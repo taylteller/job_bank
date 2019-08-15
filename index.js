@@ -123,20 +123,6 @@ if (!argv.hasOwnProperty('e') && argv.hasOwnProperty('f')) {
 console.log('esRecordsToDelete',esRecordsToDelete);
 console.log('jobstofetch',jobsToFetch);
 
-jobsToFetch.push({
-    jobs_id: [ '31039072' ],
-    file_update_date: [ '2019-08-15T09:57:00Z' ]
-  }
-);
-
-esRecordsToDelete.push({
-  _index: 'job-bank-en',
-  _type: '_doc',
-  _id: 'OnjGlWwB7UReD2qR9nHY',
-  _score: 1,
-  _source: { file_update_date: '2019-08-15T09:58:00Z', jobs_id: '31039050' }
-})
-
 
 
   jobsToFetch = await jobBank.createJobsArray(jobsToFetch, 'en').catch(error => {console.log('Cannot reach job endpoint: ',error.message)});
