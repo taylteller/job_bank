@@ -147,6 +147,98 @@ describe('getInitialIDs', () => {
   });
 });
 
+describe('dataset comparison functions getNewOrUpdatedJobs and getEsRecordsToDelete', () => {
+
+  describe('when jobs_id is duplicate with same file_update_date in both datasets', () => {
+    const endpointDataset = [{
+      jobs_id: [ '30734004' ],
+      file_update_date: [ '2019-09-01T20:45:00Z' ]
+    }];
+
+    const esHits = [{
+      _index: 'job-bank-en',
+      _type: '_doc',
+      _id: 'vTyF72wBrRz27yv2XMyw',
+      _score: 1,
+      _source: { file_update_date: '2019-09-01T20:45:00Z', jobs_id: '30734004' }
+    }];
+
+    it('should be returned by neither get function', () => {
+      return expect(jobBank.getNewOrUpdatedJobs(endpointDataset, esHits)).to.deep.equal([]) &&
+        expect(jobBank.getEsRecordsToDelete(endpointDataset, esHits)).to.deep.equal([]);
+    });
+  });
+
+  describe('when jobs_id is duplicate and file_update_date is more recent in endpoint data', () => {
+    const endpointDataset = [{
+      jobs_id: [ '30733886' ],
+      file_update_date: [ '2019-09-01T20:37:01Z' ]
+    }];
+
+    const esHits = [{
+      _index: 'job-bank-en',
+      _type: '_doc',
+      _id: 'vzyF72wBrRz27yv2XMyw',
+      _score: 1,
+      _source: { file_update_date: '2019-09-01T20:37:00Z', jobs_id: '30733886' }
+    }];
+
+    it('should be returned by both get functions', () => {
+      return expect(jobBank.getNewOrUpdatedJobs(endpointDataset, esHits)).to.deep.equal([{
+          jobs_id: [ '30733886' ],
+          file_update_date: [ '2019-09-01T20:37:01Z' ]
+        }]) &&
+        expect(jobBank.getEsRecordsToDelete(endpointDataset, esHits)).to.deep.equal([{
+          _index: 'job-bank-en',
+          _type: '_doc',
+          _id: 'vzyF72wBrRz27yv2XMyw',
+          _score: 1,
+          _source: { file_update_date: '2019-09-01T20:37:00Z', jobs_id: '30733886' }
+        }]);
+    });
+  });
+
+  describe('when jobs_id exists only in ES records', () => {
+    const endpointDataset = [];
+
+    const esHits = [{
+      _index: 'job-bank-en',
+      _type: '_doc',
+      _id: 'vzyF72wBrRz27yv2XMyw',
+      _score: 1,
+      _source: { file_update_date: '2019-09-01T20:37:00Z', jobs_id: '30733886' }
+    }];
+
+    it('should be returned by getEsRecordsToDelete', () => {
+      return expect(jobBank.getNewOrUpdatedJobs(endpointDataset, esHits)).to.deep.equal([]) &&
+        expect(jobBank.getEsRecordsToDelete(endpointDataset, esHits)).to.deep.equal([{
+          _index: 'job-bank-en',
+          _type: '_doc',
+          _id: 'vzyF72wBrRz27yv2XMyw',
+          _score: 1,
+          _source: { file_update_date: '2019-09-01T20:37:00Z', jobs_id: '30733886' }
+        }]);
+    });
+  });
+
+  describe('when jobs_id is new in endpoint data', () => {
+    const endpointDataset = [{
+      jobs_id: [ '30733886' ],
+      file_update_date: [ '2019-09-01T20:37:01Z' ]
+    }];
+
+    const esHits = [];
+
+    it('should be returned by getNewOrUpdatedJobs', () => {
+      return expect(jobBank.getNewOrUpdatedJobs(endpointDataset, esHits)).to.deep.equal([{
+          jobs_id: [ '30733886' ],
+          file_update_date: [ '2019-09-01T20:37:01Z' ]
+        }]) &&
+        expect(jobBank.getEsRecordsToDelete(endpointDataset, esHits)).to.deep.equal([]);
+    });
+  });
+});
+
 describe('createJobsArray', () => {
 
   let initialDatasetJSON = [
@@ -272,78 +364,48 @@ describe('createJobsArray', () => {
       });
     });
   });
+});
 
-  describe('createBulkPushArray', () => {
+describe('createBulkPushArray', () => {
 
-    let arrayOfJobs = [
-      {
-        jobs_id: '30955317',
-        noc_2011: '8432',
-        skill_level: 'C',
-        remote_cd: '1273956',
-        title: 'greenhouse worker',
-        noc: '8432',
-        province_cd: 'ON',
-        salary: '$14.00 hourly',
-        employer_name: 'Pomas Farms Inc.'
-      },
-      {
-        jobs_id: '30955317',
-        noc_2011: '8432',
-        skill_level: 'C',
-        remote_cd: '1273956',
-        title: 'greenhouse worker',
-        noc: '8432',
-        province_cd: 'ON',
-        salary: '$14.00 hourly',
-        employer_name: 'Pomas Farms Inc.'
-      }
-    ];
+  let arrayOfJobs = [
+    {
+      jobs_id: '30955317',
+      noc_2011: '8432',
+      skill_level: 'C',
+      remote_cd: '1273956',
+      title: 'greenhouse worker',
+      noc: '8432',
+      province_cd: 'ON',
+      salary: '$14.00 hourly',
+      employer_name: 'Pomas Farms Inc.'
+    },
+    {
+      jobs_id: '30955317',
+      noc_2011: '8432',
+      skill_level: 'C',
+      remote_cd: '1273956',
+      title: 'greenhouse worker',
+      noc: '8432',
+      province_cd: 'ON',
+      salary: '$14.00 hourly',
+      employer_name: 'Pomas Farms Inc.'
+    }
+  ];
 
-    let arrayofDeletes = [
-      {
-        _index: 'job-bank-en',
-        _type: '_doc',
-        _id: 'RHjKlWwB7UReD2qRuXHQ',
-        _score: 1,
-        _source: { file_update_date: '2019-08-15T10:00:00Z', jobs_id: '31039047' }
-      }
-    ]
+  let arrayofDeletes = [
+    {
+      _index: 'job-bank-en',
+      _type: '_doc',
+      _id: 'RHjKlWwB7UReD2qRuXHQ',
+      _score: 1,
+      _source: { file_update_date: '2019-08-15T10:00:00Z', jobs_id: '31039047' }
+    }
+  ]
 
-    describe('when it receives an array of jobs', () => {
-      it('should return an array of objects alternating between an es header object and a job object', () => {
-        const func = () => jobBank.createBulkPushArray('job-bank-en', arrayOfJobs, []);
-        return expect(func()).to.deep.equal([
-          { index: { _index: 'job-bank-en' } },
-          {
-            jobs_id: '30955317',
-            noc_2011: '8432',
-            skill_level: 'C',
-            remote_cd: '1273956',
-            title: 'greenhouse worker',
-            noc: '8432',
-            province_cd: 'ON',
-            salary: '$14.00 hourly',
-            employer_name: 'Pomas Farms Inc.'
-          },
-          { index: { _index: 'job-bank-en' } },
-          {
-            jobs_id: '30955317',
-            noc_2011: '8432',
-            skill_level: 'C',
-            remote_cd: '1273956',
-            title: 'greenhouse worker',
-            noc: '8432',
-            province_cd: 'ON',
-            salary: '$14.00 hourly',
-            employer_name: 'Pomas Farms Inc.'
-          }
-        ])
-      });
-    });
-
-    describe('when it receives an array of jobs and an array of jobs to delete', () => {
-      const func = () => jobBank.createBulkPushArray('job-bank-en', arrayOfJobs, arrayofDeletes);
+  describe('when it receives an array of jobs', () => {
+    it('should return an array of objects alternating between an es header object and a job object', () => {
+      const func = () => jobBank.createBulkPushArray('job-bank-en', arrayOfJobs, []);
       return expect(func()).to.deep.equal([
         { index: { _index: 'job-bank-en' } },
         {
@@ -368,9 +430,39 @@ describe('createJobsArray', () => {
           province_cd: 'ON',
           salary: '$14.00 hourly',
           employer_name: 'Pomas Farms Inc.'
-        },
-        { delete: { _index: 'job-bank-en', _id: 'RHjKlWwB7UReD2qRuXHQ' }}
+        }
       ])
     });
+  });
+
+  describe('when it receives an array of jobs and an array of jobs to delete', () => {
+    const func = () => jobBank.createBulkPushArray('job-bank-en', arrayOfJobs, arrayofDeletes);
+    return expect(func()).to.deep.equal([
+      { index: { _index: 'job-bank-en' } },
+      {
+        jobs_id: '30955317',
+        noc_2011: '8432',
+        skill_level: 'C',
+        remote_cd: '1273956',
+        title: 'greenhouse worker',
+        noc: '8432',
+        province_cd: 'ON',
+        salary: '$14.00 hourly',
+        employer_name: 'Pomas Farms Inc.'
+      },
+      { index: { _index: 'job-bank-en' } },
+      {
+        jobs_id: '30955317',
+        noc_2011: '8432',
+        skill_level: 'C',
+        remote_cd: '1273956',
+        title: 'greenhouse worker',
+        noc: '8432',
+        province_cd: 'ON',
+        salary: '$14.00 hourly',
+        employer_name: 'Pomas Farms Inc.'
+      },
+      { delete: { _index: 'job-bank-en', _id: 'RHjKlWwB7UReD2qRuXHQ' }}
+    ])
   });
 });

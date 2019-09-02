@@ -48,6 +48,58 @@ const jobBank = {
     });
   },
 
+  getNewOrUpdatedJobs: function(endpointDataset, esHits) {
+    let jobsToFetch = [];
+
+    endpointDataset.filter(function (job_record) {
+
+      let arrayEmptyWhenRecordNotAlreadyInES = esHits.filter(function (es_record) {
+        // If records match, ONLY push the job record to the fetch array if its date is more recent
+        if (es_record._source.jobs_id === job_record.jobs_id[0]) {
+          let esDate = new Date(es_record._source.file_update_date);
+          let jobDate = new Date(job_record.file_update_date[0]);
+          if (jobDate.getTime() > esDate.getTime()) {
+            jobsToFetch.push(job_record);
+          }
+          return true;
+        }
+      });
+
+      // If there was no match, add the job record to the fetch array
+      if (arrayEmptyWhenRecordNotAlreadyInES.length < 1) {
+        jobsToFetch.push(job_record);
+      }
+    });
+
+    return jobsToFetch;
+  },
+
+  getEsRecordsToDelete: function (endpointDataset, esHits) {
+    let esRecordsToDelete = [];
+
+    esHits.filter(function (es_record) {
+      //TODO: refactor to reduce duplicate code with getNewOrUpdatedJobs
+      let arrayEmptyWhenRecordNoLongerInJobList = endpointDataset.filter(function (job_record) {
+        //if records match, ONLY push the job record to the fetch array if its date is more recent
+        if (es_record._source.jobs_id === job_record.jobs_id[0]) {
+          let esDate = new Date(es_record._source.file_update_date);
+          let jobDate = new Date(job_record.file_update_date[0]);
+          if (jobDate.getTime() > esDate.getTime()) {
+            esRecordsToDelete.push(es_record);
+          }
+          return true;
+        }
+      });
+
+      // If there was no match (record is out of date), add the job record to the delete array
+      if (arrayEmptyWhenRecordNoLongerInJobList.length < 1) {
+        esRecordsToDelete.push(es_record);
+      }
+    });
+
+    return esRecordsToDelete;
+  },
+
   createJobsArray: async (initialDatasetJSON, lang) => {
     lang = lang.toLowerCase() === 'fr' || lang.toLowerCase() === 'french' ? french : english;
 
