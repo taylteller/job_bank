@@ -24,11 +24,9 @@ if (argv.hasOwnProperty('f') || (!argv.hasOwnProperty('e')&& !argv.hasOwnPropert
   languages.push('fr');
 }
 
-const mainScript = async function(language, operation) {
-  const index = language === 'fr' ? 'job-bank-fr' : 'job-bank-en';
-
+const mainScript = async function(languages, operation) {
   /** ***************************************************/
-  /*                QUERY MAIN ENDPOINT                */
+  /*                QUERY MAIN ENDPOINT                 */
   /** ***************************************************/
 
   let initialDatasetJSON;
@@ -41,29 +39,30 @@ const mainScript = async function(language, operation) {
   }
 
   /** ***************************************************/
-  /*                  RESET OR UPDATE                  */
+  /*                  RESET OR UPDATE                   */
   /** ***************************************************/
+  languages.forEach(async function(language) {
+    const index = language === 'fr' ? 'job-bank-fr' : 'job-bank-en';
 
-  // If reset is selected, only perform reset, even if update is also selected
-  if (operation === 'reset') {
-    try {
-      await resetScript.reset(language, index, initialDatasetJSON);
-      console.log('Reset complete.');
-    } catch (err) {
-      console.log(err);
+    // If reset is selected, only perform reset, even if update is also selected
+    if (operation === 'reset') {
+      try {
+        await resetScript.reset(language, index, initialDatasetJSON);
+        console.log('Reset for ' + language + ' index complete.');
+      } catch (err) {
+        console.log(err);
+      }
     }
-  }
 
-  if (operation !== 'reset') {
-    try {
-      await updateScript.update(language, index, initialDatasetJSON);
-      console.log('Update complete.');
-    } catch (err) {
-      console.log(err);
+    if (operation !== 'reset') {
+      try {
+        await updateScript.update(language, index, initialDatasetJSON);
+        console.log('Update for ' + language + ' index complete.');
+      } catch (err) {
+        console.log(err);
+      }
     }
-  }
+  });
 };
 
-languages.forEach((lang) => {
-  mainScript(lang, operation);
-});
+mainScript(languages, operation);
