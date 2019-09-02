@@ -5,8 +5,11 @@ const _isValidIndexObject = (index) => {
   // OR if the provided argument isn't an object (cannot be an array)
   // OR if the object doesn't have an 'index' key
   // OR if the key has no value...
-  return !!index || (typeof index === 'object' && (index instanceof Array)) || index.hasOwnProperty('index') || !index.index === undefined;
-}
+  return !!index
+    || (typeof index === 'object' && (index instanceof Array))
+    || index.hasOwnProperty('index')
+    || !index.index === undefined;
+};
 
 const create = async (index) => {
   if (!_isValidIndexObject(index)) {
@@ -25,9 +28,9 @@ const create = async (index) => {
     body: {
       acknowledged: true,
       shards_acknowledged: true,
-      index: index.index
+      index: index.index,
     },
-    statusCode: 200
+    statusCode: 200,
   };
 };
 
@@ -45,8 +48,8 @@ const del = async (index) => {
   indexExists = false;
 
   return {
-    body: { acknowledged: true },
-    statusCode: 200
+    body: {acknowledged: true},
+    statusCode: 200,
   };
 };
 
@@ -58,13 +61,13 @@ const exists = async (index) => {
   if (!indexExists) {
     return {
       body: false,
-      statusCode: 404
+      statusCode: 404,
     };
   }
 
   return {
     body: true,
-    statusCode: 200
+    statusCode: 200,
   };
 };
 
@@ -96,22 +99,20 @@ const bulk = async (body) => {
     body: {
       took: 88,
       errors: false,
-      items: [ [Object], [Object], [Object], [Object] ]
+      items: [[Object], [Object], [Object], [Object]],
     },
-    statusCode: 200
+    statusCode: 200,
   };
 };
 
 const refresh = async () => {
-
   return {
-    body: { _shards: { total: 2, successful: 2, failed: 0 } },
-    statusCode: 200
-  }
+    body: {_shards: {total: 2, successful: 2, failed: 0}},
+    statusCode: 200,
+  };
 };
 
-const search = async (keyword, index) => {
-
+const search = async () => {
   if (!indexExists) {
     throw new Error('ResponseError: index_not_found_exception');
   }
@@ -120,22 +121,22 @@ const search = async (keyword, index) => {
     body: {
       took: 3,
       timed_out: false,
-      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      _shards: {total: 1, successful: 1, skipped: 0, failed: 0},
       hits: {
-        total: { value: 1, relation: 'eq' },
+        total: {value: 1, relation: 'eq'},
         max_score: 0.90204775,
-        hits:  [
+        hits: [
           {
             _index: 'job-bank-en',
             _source: {
               jobs_id: '30999896',
-              title: 'education outreach program co-ordinator'
-            }
-          }
-        ]
-      }
+              title: 'education outreach program co-ordinator',
+            },
+          },
+        ],
+      },
     },
-    statusCode: 200
+    statusCode: 200,
   };
 };
 
@@ -148,10 +149,10 @@ EsMock.prototype = {
     create: create,
     delete: del,
     exists: exists,
-    refresh: refresh
+    refresh: refresh,
   },
   bulk: bulk,
-  search: search
+  search: search,
 };
 
 module.exports.Client = EsMock;

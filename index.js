@@ -4,13 +4,14 @@ const updateScript = require('./script/updateScript');
 const resetScript = require('./script/resetScript');
 
 const argv = require('yargs')
-  .help()
-  .alias({'english': ['e', 'English'], 'french': ['f', 'French'], 'help': ['h']})
-  .describe('english', 'perform selected operation on English index')
-  .describe('french', 'perform selected operation on French index')
-  .describe('reset', 'reset index of selected language(s)')
-  .describe('update', 'update index of selected language(s)')
-  .argv;
+    .help()
+    .alias({'english': ['e', 'English'],
+      'french': ['f', 'French'], 'help': ['h']})
+    .describe('english', 'perform selected operation on English index')
+    .describe('french', 'perform selected operation on French index')
+    .describe('reset', 'reset index of selected language(s)')
+    .describe('update', 'update index of selected language(s)')
+    .argv;
 
 const operation = argv.hasOwnProperty('reset') ? 'reset' : 'update';
 
@@ -23,39 +24,46 @@ if (argv.hasOwnProperty('f') || (!argv.hasOwnProperty('e')&& !argv.hasOwnPropert
   languages.push('fr');
 }
 
-const mainScript = async function (language, operation) {
-
+const mainScript = async function(language, operation) {
   const index = language === 'fr' ? 'job-bank-fr' : 'job-bank-en';
 
-  /*****************************************************/
+  /** ***************************************************/
   /*                QUERY MAIN ENDPOINT                */
-  /*****************************************************/
+  /** ***************************************************/
 
-  let initialDatasetJSON = await jobBank.getInitialIDs().catch(error => {
-    console.log('Cannot process data from main endpoint: ',error.message);
+  let initialDatasetJSON;
+
+  try {
+    initialDatasetJSON = await jobBank.getInitialIDs();
+  } catch (err) {
+    console.log('Cannot process data from main endpoint: ', err.message);
     process.exit(1);
-  });
+  }
 
-  //TODO: temporary limit on n of records; will need to be unlimited
-  initialDatasetJSON = initialDatasetJSON.slice(0,3);
-  console.log('initialDatasetJSON',initialDatasetJSON);
-
-  /*****************************************************/
+  /** ***************************************************/
   /*                  RESET OR UPDATE                  */
-  /*****************************************************/
+  /** ***************************************************/
 
   // If reset is selected, only perform reset, even if update is also selected
   if (operation === 'reset') {
-    resetScript.reset(language, index, initialDatasetJSON);
+    try {
+      await resetScript.reset(language, index, initialDatasetJSON);
+      console.log('Reset complete.');
+    } catch (err) {
+      console.log(err);
+    }
   }
 
-  // If reset is not selected, default to update
   if (operation !== 'reset') {
-    updateScript.update(language, index, initialDatasetJSON);
+    try {
+      await updateScript.update(language, index, initialDatasetJSON);
+      console.log('Update complete.');
+    } catch (err) {
+      console.log(err);
+    }
   }
-
 };
 
-languages.forEach(lang => {
+languages.forEach((lang) => {
   mainScript(lang, operation);
 });

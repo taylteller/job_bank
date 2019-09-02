@@ -6,26 +6,51 @@ module.exports.update = async (language, index, initialDataset) => {
   let esHits;
 
   try {
-    let searchQuery = await elasticsearch.searchQuery(index);
+    const searchQuery = await elasticsearch.searchQuery(index);
     esHits = searchQuery.body.hits.hits;
   } catch (err) {
-    console.log('Could not perform search query', err.message);
+    console.log('Could not retrieve Elasticsearch records');
+    throw err;
   }
 
-  let jobsToFetch = jobBank.getNewOrUpdatedJobs(initialDataset, esHits);
-  let esRecordsToDelete = jobBank.getEsRecordsToDelete(initialDataset, esHits);
+  const jobsToFetch = jobBank.getNewOrUpdatedJobs(initialDataset, esHits);
+  const esRecordsToDelete =
+    jobBank.getEsRecordsToDelete(initialDataset, esHits);
 
-  let jobsToPush = await jobBank.createJobsArray(jobsToFetch, language).catch(error => {console.log('Cannot reach job endpoint: ',error.message)});
-  //TODO: do something with jobsToFetch.errors - log to console for now
+  let jobsToPush = [];
 
-  bulkPushArray = jobBank.createBulkPushArray(index, jobsToPush.jobs, esRecordsToDelete);
-  //TODO: will also need error handling
+  try {
+    jobsToPush = await jobBank.createJobsArray(jobsToFetch, language);
+    // This is a placeholder; something else could be done with the errors array
+    if (jobsToPush.errors.length > 0) {
+      console.log('Failed to reach jobs with these IDs: ', jobsToPush.errors);
+    }
+  } catch (err) {
+    console.log('Cannot reach job endpoint: ', err.message);
+  }
+
+  let bulkPushArray = [];
+
+  try {
+    bulkPushArray =
+      jobBank.createBulkPushArray(index, jobsToPush.jobs, esRecordsToDelete);
+  } catch (err) {
+    console.log('Error occurred while creating bulkPushArray: ', err.message);
+  }
 
   if (bulkPushArray.length > 0) {
-    test = await elasticsearch.bulkSave(bulkPushArray);
-    console.log('test2', test);
+    try {
+      await elasticsearch.bulkSave(bulkPushArray);
+    } catch (err) {
+      console.log('Could not bulk save records into Elasticsearch');
+      throw err;
+    }
 
-    refresher = await elasticsearch.refresh(index);
-    console.log('refresher',refresher)
+    try {
+      await elasticsearch.refresh(index);
+    } catch (err) {
+      console.log('Could not refresh index ' + index);
+      throw err;
+    }
   }
 };

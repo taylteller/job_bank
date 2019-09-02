@@ -1,11 +1,11 @@
-const { Client } = require('@elastic/elasticsearch');
+const {Client} = require('@elastic/elasticsearch');
 const mockES = require('../test/mock/elasticsearch.mock');
 
 const client = !!+process.env.ES_MOCK ? new mockES.Client() :
-  new Client({ node: process.env.ES_PORT || 'http://localhost:9200' });
+  new Client({node: process.env.ES_PORT || 'http://localhost:9200'});
 
 module.exports.resetIndex = async (index) => {
-let deconstructor = { body: undefined};
+  let deconstructor = {body: undefined};
 
   try {
     deconstructor = await client.indices.exists({index: index});
@@ -35,27 +35,25 @@ module.exports.bulkSave = async (allRecords) => {
 
 module.exports.refresh = async (index) => {
   try {
-    return await client.indices.refresh({ index });
+    return await client.indices.refresh({index});
   } catch (err) {
-    console.log(`Error refreshing index: ${JSON.stringify(err, null, 2)}`)
+    console.log(`Error refreshing index: ${err.message}`);
   }
 };
 
 module.exports.searchQuery = async (index) => {
-
   try {
     return await client.search({
-      _source: ["jobs_id", "file_update_date"],
+      _source: ['jobs_id', 'file_update_date'],
       index: index,
       body: {
         query: {
           match_all: {},
         },
-      }
-    })
+      },
+    });
   } catch (err) {
-    // console.log(`Error performing search: ${err}`);
-    console.log(`Error performing search: ${JSON.stringify(err, null, 2)}`);
+    console.log(`Error performing search: ${err.message}`);
     return false;
   }
 };
